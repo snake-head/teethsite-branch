@@ -1,5 +1,6 @@
 <template>
 	<div class="right-side-menu" :class="showRightSidemenu ? 'show' : 'hide'">
+		<button @click="addSphere">Add SphereWidget</button>
 		<div class="distance-table">
 			<div class="dt-col" v-for="(itemList, index) in distanceMessageList" :key="index">
 				<div
@@ -57,7 +58,7 @@ import { throttle } from "@kitware/vtk.js/macro";
 import { FieldAssociations } from "@kitware/vtk.js/Common/DataModel/DataSet/Constants";
 
 import vtkOrientationMarkerWidget from "@kitware/vtk.js/Interaction/Widgets/OrientationMarkerWidget";
-import vtkAxesActor from "@kitware/vtk.js/Rendering/Core/AxesActor";
+// import vtkAxesActor from "@kitware/vtk.js/Rendering/Core/AxesActor";
 import vtkInteractorStyleImage from "../../reDesignVtk/reDesignInteractorStyleImage";
 import vtkInteractorStyleTrackballCameraNew from "../../reDesignVtk/reDesignInteractorStyleTrackballCamera";
 
@@ -208,6 +209,18 @@ watch(currentShowPanel, (newVal, oldVal) => {
 const widgetManagerDentalArch = vtkWidgetManager.newInstance();
 let dentalArchWidgets = {}; // 每次调整后再排牙后需要重新设置
 let initFittingCenters = {};
+let widget = null;
+let widgetHandle = null;
+
+function addSphere(){
+	const {widgetManager} = vtkContext;
+
+	widgetManager.releaseFocus(widget);
+	widget = vtkSphereWidget.newInstance();
+	// widget.placeWidget(cube.getOutputData().getBounds());
+	widgetHandle = widgetManager.addWidget(widget);
+	widgetManager.grabFocus(widget);
+}
 //2023.2.14更新：将小球widget改为widgetManager管理
 /**
  * @description 进入牙弓线调整面板时调用, 生成调整小球
@@ -940,30 +953,32 @@ onMounted(() => {
 		hardwareSelector.setCaptureZValues(true);
 		hardwareSelector.setFieldAssociation(FieldAssociations.FIELD_ASSOCIATION_POINTS);
 
-		//#region 在左下角显示xyz坐标系方向
-		const axes = vtkAxesActor.newInstance();
-		axes.setXAxisColor(205, 50, 50);
-		axes.setYAxisColor(50, 205, 50);
-		axes.setZAxisColor(50, 50, 205);
-		axes.setConfig({
-			invert: false,
-			shaftRadius: 0.01,
-			shaftResolution: 30,
-			tipLength: 0.2,
-			tipRadius: 0.06,
-			tipResolution: 30,
-		});
-		axes.update();
-		const orientationWidget = vtkOrientationMarkerWidget.newInstance({
-			actor: axes,
-			interactor: renderWindow.getInteractor(),
-		});
+		const widgetManager = vtkWidgetManager.newInstance();
 
-		orientationWidget.setEnabled(true);
-		orientationWidget.setViewportCorner(vtkOrientationMarkerWidget.Corners.BOTTOM_LEFT);
-		orientationWidget.setViewportSize(0.15); // 尺寸
-		orientationWidget.setMinPixelSize(15); // 最小尺寸
-		orientationWidget.setMinPixelSize(100); // 最大尺寸
+		//#region 在左下角显示xyz坐标系方向
+		// const axes = vtkAxesActor.newInstance();
+		// axes.setXAxisColor(205, 50, 50);
+		// axes.setYAxisColor(50, 205, 50);
+		// axes.setZAxisColor(50, 50, 205);
+		// axes.setConfig({
+		// 	invert: false,
+		// 	shaftRadius: 0.01,
+		// 	shaftResolution: 30,
+		// 	tipLength: 0.2,
+		// 	tipRadius: 0.06,
+		// 	tipResolution: 30,
+		// });
+		// axes.update();
+		// const orientationWidget = vtkOrientationMarkerWidget.newInstance({
+		// 	actor: axes,
+		// 	interactor: renderWindow.getInteractor(),
+		// });
+
+		// orientationWidget.setEnabled(true);
+		// orientationWidget.setViewportCorner(vtkOrientationMarkerWidget.Corners.BOTTOM_LEFT);
+		// orientationWidget.setViewportSize(0.15); // 尺寸
+		// orientationWidget.setMinPixelSize(15); // 最小尺寸
+		// orientationWidget.setMinPixelSize(100); // 最大尺寸
 		//#endregion
 
 		// 保存绘制窗口的renderer和rendererWindow
@@ -973,8 +988,9 @@ onMounted(() => {
 			renderer,
 			interactor,
 			hardwareSelector,
-			orientationWidget,
-			axes,
+			widgetManager,
+			// orientationWidget,
+			// axes,
 		};
 	}
 
@@ -1200,6 +1216,7 @@ watch(
 		// 空->托槽, 需要add
 		// 托槽->空, 需要remove
 		// 托槽->另一托槽, 需要add和remove
+		const { widgetManager } = vtkContext
 		const { addActorsList, delActorsList, handleInfo } = axisActorShowStateUpdate(oldVal, newVal, props.actorInScene.axis, widgetManager, applyCalMatrix.tad);
 		handleInfoGet = handleInfo;
 		actorInSceneAdjust(addActorsList, delActorsList);
@@ -1216,6 +1233,7 @@ watch(
 // 2023.2.19更新：用于移动牙尖/牙底小球（按键式）
 
 function moveHandle(selectedWidget, moveType, moveStep, ifStraightenSimulation){
+	const { widgetManager } = vtkContext
 	const widgetHandle = selectedWidget=='startPoint'?widgetManager.getWidgets()[0]:widgetManager.getWidgets()[1];
 	if (currentSelectBracket.name.startsWith('U')){
 		bracketData.upper.forEach((value)=>{
@@ -1234,7 +1252,6 @@ function moveHandle(selectedWidget, moveType, moveStep, ifStraightenSimulation){
 	}
 }
 
-const widgetManager = vtkWidgetManager.newInstance();
 // 用于监听显示/隐藏状态改变
 watch(props.actorInScene, (newVal) => {
 	const { addActorsList, delActorsList } = actorShowStateUpdateFusion(newVal, fineTuneMode.value !== "normal");
@@ -1306,14 +1323,15 @@ watch(props.actorInScene, (newVal) => {
 		// }
 
 		// 2022.12.15更新：使用widgetManager管理小球widget
+		const { widgetManager } = vtkContext
 		widgetManager.setRenderer(renderer);
 		widgetManager.enablePicking();
 		for (let teethType of ["upper", "lower"]) {
 			allActorList[teethType].distanceLine.forEach((item) => {
-				item.startPointWidget.setRenderer(renderer)
-				item.startPointWidget.setRenderWindow(renderWindow)
-				item.endPointWidget.setRenderer(renderer)
-				item.endPointWidget.setRenderWindow(renderWindow)
+				// item.startPointWidget.setRenderer(renderer)
+				// item.startPointWidget.setRenderWindow(renderWindow)
+				// item.endPointWidget.setRenderer(renderer)
+				// item.endPointWidget.setRenderWindow(renderWindow)
 				// const startPointWidgetHandle = widgetManager.addWidget(item.startPointWidget);
 				// startPointWidgetHandle.setCenterAndRadius(item.startPoint, 0)
 				// const endPointWidgetHandle = widgetManager.addWidget(item.endPointWidget);
@@ -1339,7 +1357,7 @@ watch(props.actorInScene, (newVal) => {
 		//         viewUp,
 		//         viewFront
 		//     ))
-		vtkContext.axes.setUserMatrix(calculateRigidBodyTransMatrix([0, 0, 0], viewFront, viewRight, viewUp));
+		// vtkContext.axes.setUserMatrix(calculateRigidBodyTransMatrix([0, 0, 0], viewFront, viewRight, viewUp));
 		// 坐标轴需要转换角度调整, 否则尺寸对不上
 		resetView("LEFT", teethType);
 		resetView("FRONT", teethType);
@@ -1655,7 +1673,7 @@ function resetView(orientationType, teethType, keepFocalDis = false) {
 	}
 	camera.setPosition(...finalPos);
 
-	orientationWidget.updateMarkerOrientation();
+	// orientationWidget.updateMarkerOrientation();
 
 	// render the scene
 	renderWindow.render();
@@ -1747,9 +1765,9 @@ function focusOnSelectedBracket() {
 	// 相机可显示距离
 	camera.setClippingRange(1, 1000);
 
-	if (orientationWidget) {
-		orientationWidget.updateMarkerOrientation();
-	}
+	// if (orientationWidget) {
+	// 	orientationWidget.updateMarkerOrientation();
+	// }
 
 	// 渲染
 	renderWindow.render();
@@ -2169,10 +2187,10 @@ function applyUserMatrixWhenSwitchMode(fromMode, toMode, render = false) {
 			// 依赖点集
 			// startPointWidget.getActor().setUserMatrix(applyCalMatrix.tad[name]);
 			// endPointWidget.getActor().setUserMatrix(applyCalMatrix.tad[name]);
-			if(handleInfoGet.startPointWidgetHandle&&name==handleInfoGet.toothName){
-				handleInfoGet.startPointWidgetHandle.getRepresentations()[0].getActor().setUserMatrix(applyCalMatrix.tad[handleInfoGet.toothName]);
-				handleInfoGet.endPointWidgetHandle.getRepresentations()[0].getActor().setUserMatrix(applyCalMatrix.tad[handleInfoGet.toothName]);
-			}
+			// if(handleInfoGet.startPointWidgetHandle&&name==handleInfoGet.toothName){
+			// 	handleInfoGet.startPointWidgetHandle.getRepresentations()[0].getActor().setUserMatrix(applyCalMatrix.tad[handleInfoGet.toothName]);
+			// 	handleInfoGet.endPointWidgetHandle.getRepresentations()[0].getActor().setUserMatrix(applyCalMatrix.tad[handleInfoGet.toothName]);
+			// }
 		});
 		// 牙弓线
 		if (arch.actor) {
@@ -2196,20 +2214,20 @@ function applyUserMatrixWhenSwitchMode(fromMode, toMode, render = false) {
 
 //2023.3.7更新：在下拉列表里选择想要调整的widget后，activate相应的小球
 function setHandleActive(selectedWidget){
-	if (!handleInfoGet.startPointWidgetHandle){
-		return
-	}
-	if(selectedWidget=='startPoint'){
-		handleInfoGet.startPointWidgetHandle.getRepresentations()[0].getRepresentationStates()[0].setActive(true)
-		handleInfoGet.endPointWidgetHandle.getRepresentations()[0].getRepresentationStates()[0].setActive(false)
-	}else if(selectedWidget=='endPoint'){
-		handleInfoGet.startPointWidgetHandle.getRepresentations()[0].getRepresentationStates()[0].setActive(false)
-		handleInfoGet.endPointWidgetHandle.getRepresentations()[0].getRepresentationStates()[0].setActive(true)
-	}else{
-		handleInfoGet.startPointWidgetHandle.getRepresentations()[0].getRepresentationStates()[0].setActive(false)
-		handleInfoGet.endPointWidgetHandle.getRepresentations()[0].getRepresentationStates()[0].setActive(false)
-	}
-	vtkContext.renderWindow.render()
+	// if (!handleInfoGet.startPointWidgetHandle){
+	// 	return
+	// }
+	// if(selectedWidget=='startPoint'){
+	// 	handleInfoGet.startPointWidgetHandle.getRepresentations()[0].getRepresentationStates()[0].setActive(true)
+	// 	handleInfoGet.endPointWidgetHandle.getRepresentations()[0].getRepresentationStates()[0].setActive(false)
+	// }else if(selectedWidget=='endPoint'){
+	// 	handleInfoGet.startPointWidgetHandle.getRepresentations()[0].getRepresentationStates()[0].setActive(false)
+	// 	handleInfoGet.endPointWidgetHandle.getRepresentations()[0].getRepresentationStates()[0].setActive(true)
+	// }else{
+	// 	handleInfoGet.startPointWidgetHandle.getRepresentations()[0].getRepresentationStates()[0].setActive(false)
+	// 	handleInfoGet.endPointWidgetHandle.getRepresentations()[0].getRepresentationStates()[0].setActive(false)
+	// }
+	// vtkContext.renderWindow.render()
 }
 
 function updateCurrentMode(mode, value) {
@@ -2227,6 +2245,7 @@ function printCoords(){
 	console.log(fpsMonitor)
 	fpsMonitor.setContainer(vtkContainer.value);
 	fpsMonitor.setRenderWindow(vtkContext.renderWindow);
+	const { widgetManager } = vtkContext
 	widgetManager.releaseFocus(widget);
 	const widget = vtkSphereWidget.newInstance();
 	const widgetHandle = widgetManager.addWidget(widget);
@@ -2315,10 +2334,10 @@ function updateAndApplySingleBracketUserMatrix(bracketName, newFineTuneRecord, c
 		// 2023.2.22更新：改为widgetManager
 		// matchItem.distanceLine.startPointRep.getActor().setUserMatrix(applyCalMatrix.tad[bracketName]);
 		// matchItem.distanceLine.endPointRep.getActor().setUserMatrix(applyCalMatrix.tad[bracketName]);
-		if(handleInfoGet.startPointWidgetHandle&&bracketName==handleInfoGet.toothName){
-			handleInfoGet.startPointWidgetHandle.getRepresentations()[0].getActor().setUserMatrix(applyCalMatrix.tad[handleInfoGet.toothName]);
-			handleInfoGet.endPointWidgetHandle.getRepresentations()[0].getActor().setUserMatrix(applyCalMatrix.tad[handleInfoGet.toothName]);
-		}
+		// if(handleInfoGet.startPointWidgetHandle&&bracketName==handleInfoGet.toothName){
+		// 	handleInfoGet.startPointWidgetHandle.getRepresentations()[0].getActor().setUserMatrix(applyCalMatrix.tad[handleInfoGet.toothName]);
+		// 	handleInfoGet.endPointWidgetHandle.getRepresentations()[0].getActor().setUserMatrix(applyCalMatrix.tad[handleInfoGet.toothName]);
+		// }
 	}
 	// -渲染
 	vtkContext.renderWindow.render();
@@ -3333,6 +3352,7 @@ defineExpose({
 	rollbackCheckedData,
 	adjustButtonMoveWidget,
 	setHandleActive,
+	addSphere,
 });
 </script>
 

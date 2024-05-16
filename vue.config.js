@@ -1,3 +1,11 @@
+/*
+ * @Description: 
+ * @Version: 1.0
+ * @Autor: ZhuYichen
+ * @Date: 2022-09-27 11:03:07
+ * @LastEditors: ZhuYichen
+ * @LastEditTime: 2024-04-23 14:22:20
+ */
 module.exports = {
     lintOnSave: false, // 关闭语法检查
     productionSourceMap: false, // 打包关闭源映射
@@ -50,6 +58,13 @@ module.exports = {
             .end();
         config.module.rule("js").exclude.add(/\.worker\.js$/);
     },
+    configureWebpack: {
+        resolve: {
+          fallback: {
+            timers: false
+          }
+        }
+      },
     // chainWebpack: config => {
     //     // 配置
     //     config.module

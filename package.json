@@ -9,9 +9,18 @@
   },
   "dependencies": {
     "@kitware/vtk.js": "30.4.0",
+    "axios": "^1.6.8",
     "core-js": "^3.8.3",
-    "element-plus": "^2.3.3",
-    "vue": "^3.2.13"
+    "crypto-js": "^4.2.0",
+    "element-plus": "1.0.2-beta.62",
+    "file-saver": "^2.0.5",
+    "pako": "^2.1.0",
+    "q": "^1.5.1",
+    "timers-browserify": "^2.0.12",
+    "vue": "^3.2.13",
+    "vue-router": "^4.3.2",
+    "vuex": "^4.1.0",
+    "xml2js": "0.4.23"
   },
   "devDependencies": {
     "@babel/core": "^7.12.16",
